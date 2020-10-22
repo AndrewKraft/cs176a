@@ -79,7 +79,7 @@ class Client():
 		try:
 			with open(fname, 'a') as f:
 				f.write(result.stdout)
-		except Exception:
+		except FileNotFoundError:
 			with open(fname, 'w+') as f:
 				f.write(result.stdout)
 		
@@ -121,9 +121,10 @@ while 1:
 		# if more than 500 milliseconds pass between 2 messages, all current clients have timed out
 		addrs = []
 		clients = {}
-		for t in threads:
-			t.join()
-		threads = []
+		if threads:
+			for t in threads:
+				t.join()
+			threads = []
 		continue
 
 	# if no previous packet from address 'addr', create a new Client and add it to map

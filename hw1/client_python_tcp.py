@@ -21,15 +21,7 @@ if (PORT > 65353) | (PORT < 1024):
 	exit(0)
 addr = (HOST, PORT)
 
-def run(cmd, addr):
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	try:
-		sock.connect(addr)
-	except socket.error:
-		print('Could not connect to server.')
-		sock.close()
-		return 0
-	
+def run(cmd, sock):
 	try:
 		sock.settimeout(1)
 		sock.send(cmd.encode())
@@ -55,12 +47,27 @@ def run(cmd, addr):
 		sock.close()
 		return 0
 
+sockets = []
+for i in range(NUM_CLIENTS):
+	sockets.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+
+for sock in sockets:
+	try:
+		sock.connect(addr)
+	except socket.error:
+		print('Could not connect to server.')
+		sock.close()
+		sockets.remove(sock)
+
+if not sockets:
+	exit(0)
+
 cmd = input('Enter command: ')
 cmd = '{:08X}{}'.format(len(cmd), cmd)
 
 threads = []
 for i in range(NUM_CLIENTS):
-	t = subprocess.threading.Thread(target=run, kwargs={'cmd': cmd, 'addr': addr})
+	t = subprocess.threading.Thread(target=run, kwargs={'cmd': cmd, 'sock': sockets[i]})
 	t.start()
 	threads.append(t)
 

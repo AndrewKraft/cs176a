@@ -28,7 +28,7 @@ def run(sock):
 	try:
 		with open(fname, 'a') as f:
 			f.write(result.stdout)
-	except Exception:
+	except FileNotFoundError:
 		with open(fname, 'w+') as f:
 			f.write(result.stdout)
 	with open(fname) as f:
@@ -77,9 +77,10 @@ while 1:
 		t.start()
 		threads.append(t)
 	except socket.timeout:
-		for t in threads:
-			t.join()
-		threads = []
+		if threads:
+			for t in threads:
+				t.join()
+			threads = []
 	except ConnectionError:
 		print('Failed to connect to client.')
 		continue
