@@ -1,10 +1,8 @@
 import socket
-import sys
 import time
 import subprocess
 
 # general inspiration from https://docs.python.org/3/howto/sockets.html, Author: Gordon McMillan
-# specific usage of select from https://pymotw.com/2/select/, Author: Doug Hellmann
 # formatting of filename from https://stackoverflow.com/questions/10607688/how-to-create-a-file-name-with-the-current-date-time-in-python
 # https://docs.python.org/3/library/random.html
 # https://docs.python.org/3/library/subprocess.html
