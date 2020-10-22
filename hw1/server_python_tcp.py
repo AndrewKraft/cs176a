@@ -73,17 +73,19 @@ while 1:
 	try:
 		serversocket.settimeout(1)
 		(sock, addr) = serversocket.accept()
-		t = subprocess.threading.Thread(target=run, kwargs={'sock':sock})
-		t.start()
-		threads.append(t)
 	except socket.timeout:
 		if threads:
 			for t in threads:
 				t.join()
 			threads = []
+		continue
 	except ConnectionError:
 		print('Failed to connect to client.')
 		continue
+
+	t = subprocess.threading.Thread(target=run, kwargs={'sock':sock})
+	t.start()
+	threads.append(t)
 
 	# remove threads which have finished
 	t = [t for t in threads if t.is_alive()]
