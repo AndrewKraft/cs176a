@@ -2,6 +2,14 @@ import socket
 import sys
 import time
 
+# general inspiration from https://docs.python.org/3/howto/sockets.html, Author: Gordon McMillan
+# specific usage of select from https://pymotw.com/2/select/, Author: Doug Hellmann
+# formatting of filename from https://stackoverflow.com/questions/10607688/how-to-create-a-file-name-with-the-current-date-time-in-python
+# https://docs.python.org/3/library/random.html
+# https://docs.python.org/3/library/subprocess.html
+# https://docs.python.org/3/library/socket.html
+
+
 HOST = input('Enter server name or IP address: ')
 try:
 	PORT = int(input('Enter port: '), 10)
@@ -33,6 +41,7 @@ for sock in clientsocks:
 		cmd[sock])
 
 for sock in clientsocks:
+	time.sleep(1)
 	sock.settimeout(500)
 	try:
 		sock.send(cmd[sock].encode())
