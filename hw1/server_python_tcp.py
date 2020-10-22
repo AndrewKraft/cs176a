@@ -1,6 +1,7 @@
 import socket
 import subprocess
 import time
+import sys
 
 # general inspiration from https://docs.python.org/3/howto/sockets.html, Author: Gordon McMillan
 # specific usage of select from https://pymotw.com/2/select/, Author: Doug Hellmann (No longer uses select)
