@@ -11,6 +11,42 @@ import time
 # https://docs.python.org/3/library/subprocess.html
 # https://docs.python.org/3/library/socket.html
 
+def run(sock):
+	cmd = ''
+	try:
+		from_client = sock.recv(8).decode()
+		# if len message recd, settimeout to 500ms and wait for cmd
+		sock.settimeout(0.5)
+		from_client = sock.recv(int(from_client, 16)).decode()
+	except socket.timeout:
+		print('Failed to receive instructions from the client.')
+		sock.close()
+		return 0
+	
+	result = subprocess.run(cmd, shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	fname = 'server-' + time.strftime('%Y%m%d-%H%M%S') + '.txt'
+	to_client = ''
+	try:
+		with open(fname, 'a') as f:
+			f.write(result.stdout)
+	except Exception:
+		with open(fname, 'w+') as f:
+			f.write(result.stdout)
+	with open(fname) as f:
+		to_client = f.read()
+
+	to_client = '{:08X}{}'.format(len(cmd), cmd)
+	try:
+		sock.settimeout(1)
+		sock.send(to_client.encode())
+	except socket.timeout:
+		print('File trainsfer failed.')
+		sock.close()
+		return 0
+	sock.close()
+	return 1
+	
+
 PORT = 3300
 if len(sys.argv) > 1:
 	try:
@@ -26,77 +62,29 @@ HOST = ''
 serversocket = socket.socket(
 	socket.AF_INET,
 	socket.SOCK_STREAM)
-serversocket.settimeout(500)
+serversocket.settimeout(0.5)
 
 serversocket.bind((HOST, PORT))
 
 serversocket.listen(5)
 print('socket listening on %s port %s' % (HOST, PORT))
 
-inputs = [serversocket]
-outputs = []
+threads = []
+while 1:
+	try:
+		serversocket.settimeout(1)
+		(sock, addr) = serversocket.accept()
+		t = subprocess.threading.Thread(target=run, kwargs={'sock':sock})
+		t.start()
+		threads.append(t)
+	except socket.timeout:
+		for t in threads:
+			t.join()
+		threads = []
+	except ConnectionError:
+		print('Failed to connect to client.')
+		continue
 
-cmd = {} # socket to string
-
-
-while inputs:
-	print('%s current connections' % (len(inputs)-1))
-
-	readable, writeable, errors = select.select(inputs, outputs, inputs)
-	for sock in readable:
-		if sock is serversocket:
-			(clientsock, address) = sock.accept()
-			clientsock.setblocking(500)
-
-			print('connecting to client (\'%s\', %s)' % address)
-			inputs.append(clientsock)
-			cmd[clientsock] = ''
-		else:
-			try:
-				data = sock.recv(8)
-				if data:
-					print('received %s bytes from %s' % (data.decode(), sock.getpeername()))
-					cmd[sock] = sock.recv(int(data.decode(), 16)).decode()
-					if sock not in outputs:
-						outputs.append(sock)
-				else:
-					print('Disconnecting from client %s' % (sock.getpeername()))
-					if sock in outputs:
-						outputs.remove(sock)
-					inputs.remove(sock)
-					del cmd[sock]
-					sock.close()
-			except socket.timeout:
-				print('Connection to %s timed out.' % sock.getpeername())
-				if sock in outputs:
-					outputs.remove(sock)
-				inputs.remove(sock)
-				del cmd[sock]
-				sock.close()
-	for sock in writeable:
-		result = subprocess.run(cmd[sock], shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-		
-		fname = 'server-' + time.strftime('%Y%m%d-%H%M%S') + '.txt'
-		outToClient = ''
-		with open(fname, 'w+') as f:
-			f.write(result.stdout)
-		with open(fname) as f:
-			outToClient = f.read()
-
-		outToClient = '%s%s' % ('{:08X}'.format(len(outToClient)), outToClient)
-		try:
-			sock.send(outToClient.encode())
-		except socket.timeout:
-			print('Connection to %s timed out.' % sock.getpeername())
-			inputs.remove(sock)
-			sock.close()
-		outputs.remove(sock)
-		cmd[sock] = ''
-	for sock in errors:
-		if sock in outputs:
-			outputs.remove(sock)
-		inputs.remove(sock)
-		del cmd[sock]
-		sock.close()
-
+	# remove threads which have finished
+	t = [t for t in threads if t.is_alive()]
 			

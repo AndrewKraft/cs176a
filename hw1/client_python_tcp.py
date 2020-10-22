@@ -1,6 +1,7 @@
 import socket
 import sys
 import time
+import subprocess
 
 # general inspiration from https://docs.python.org/3/howto/sockets.html, Author: Gordon McMillan
 # specific usage of select from https://pymotw.com/2/select/, Author: Doug Hellmann
@@ -20,53 +21,50 @@ except ValueError as e:
 if (PORT > 65353) | (PORT < 1024):
 	print('Invalid port number.')
 	exit(0)
+addr = (HOST, PORT)
 
-clientsocks = []
-for i in range(NUM_CLIENTS):
-	clientsocks.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
-for sock in clientsocks:
+def run(cmd, addr):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	try:
-		sock.connect((HOST,PORT))
-		sock.setblocking(0)
-	except socket.error as e:
+		sock.connect(addr)
+	except socket.error:
 		print('Could not connect to server.')
-		exit(0)
-
-cmd = {}
-for sock in clientsocks:
-	cmd[sock] = input('Enter command: ')
-	cmd[sock] = "%s%s" % (
-		'{:08X}'.format(len(cmd[sock])),
-		cmd[sock])
-
-for sock in clientsocks:
-	time.sleep(1)
-	sock.settimeout(500)
+		sock.close()
+		return 0
+	
 	try:
-		sock.send(cmd[sock].encode())
-	except socket.error as e:
+		sock.settimeout(1)
+		sock.send(cmd.encode())
+	except socket.error:
 		print('Failed to send command. Terminating.')
-		del cmd[sock]
-		clientsocks.remove(sock)
 		sock.close()
-if clientsocks is None:
-	exit(0)
-
-for sock in clientsocks:
+		return 0
+	
 	try:
-		inFromServer = sock.recv(8).decode()
-		inFromServer = sock.recv(int(inFromServer,16)).decode()
+		from_server = sock.recv(8).decode()
+		from_server = sock.recv(int(from_server, 16)).decode()
+		
 		fname = 'client-' + time.strftime('%Y%m%d-%H%M%S') + '.txt'
-		with open(fname, 'w+') as f:
-			f.write(inFromServer)
-			print('File %s saved.' % fname)
-	except socket.error as e:
+		try:
+			with open(fname, 'a') as f:
+				f.write(from_server)
+		except Exception:
+			with open(fname, 'w+') as f:
+				f.write(from_server)
+		print('File %s saved.' % fname)
+	except socket.error:
 		print('Did not receive response.')
-		del cmd[sock]
-		clientsocks.remove(sock)
 		sock.close()
-if clientsocks is None:
-	exit(0)
+		return 0
 
-for sock in clientsocks:
-	sock.close()
+cmd = input('Enter command: ')
+cmd = '{:08X}{}'.format(len(cmd), cmd)
+
+threads = []
+for i in range(NUM_CLIENTS):
+	t = subprocess.threading.Thread(target=run, kwargs={'cmd': cmd, 'addr': addr})
+	t.start()
+	threads.append(t)
+
+for t in threads:
+	t.join()

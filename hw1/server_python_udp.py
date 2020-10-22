@@ -122,6 +122,9 @@ while 1:
 		# if more than 500 milliseconds pass between 2 messages, all current clients have timed out
 		addrs = []
 		clients = {}
+		for t in threads:
+			t.join()
+		threads = []
 		continue
 
 	# if no previous packet from address 'addr', create a new Client and add it to map
@@ -162,6 +165,7 @@ while 1:
 	timeout = time.time() - 0.5
 	for addr in addrs:
 		if clients[addr].last_accessed < timeout:
+			print('Failed to receive instructions from the client.')
 			del clients[addr]
 			addrs.remove[addr]
 
