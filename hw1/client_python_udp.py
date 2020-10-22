@@ -24,7 +24,7 @@ if (PORT > 65353) | (PORT < 1024):
 
 BUFFSIZE = 1500
 NUM_CLIENTS = 1
-DROP_CHANCE = 0.1
+DROP_CHANCE = 0.0
 
 def unreliable_sendto(clientsock, buff, addr):
 	if random.random() > DROP_CHANCE:
@@ -33,74 +33,77 @@ def unreliable_sendto(clientsock, buff, addr):
 	else:
 		print('DROPPED')
 
-class Client():
-	def __init__(self, sock=None):
-		if sock is None:
-			self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		self.cmd = ''
-		self.bytes_remaining = 0
-		self.msg = []
-		self.last = ''
-
-	def send_to_server(self, addr):
-		self.sock.settimeout(1)
-		for i in range(3):
-			try:
-				unreliable_sendto(self.sock, str(len(self.cmd)).encode(), addr)
-				unreliable_sendto(self.sock, self.cmd.encode(), addr)
-				(packet, addr) = self.sock.recvfrom(BUFFSIZE)
-				print('ACK')
-				break
-			except socket.timeout:
-				if i == 2:
-					print('Failed to send command. Terminating.')
-					self.sock.close()
-					exit(0)
-				continue
-			except ConnectionError:
+def run(cmd, length, addr):
+	# send command to server
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	for i in range(3):
+		try:
+			unreliable_sendto(sock, length.encode(), addr)
+			unreliable_sendto(sock, cmd.encode(), addr)
+			(packet, addr) = sock.recvfrom(BUFFSIZE)
+			print('ACK')
+			break
+		except socket.timeout:
+			if i == 2:
 				print('Failed to send command. Terminating.')
-				self.sock.close()
+				sock.close()
 				exit(0)
-	
-	def get_server_response(self):
-		while self.bytes_remaining == 0:
-			try:
-				(packet, addr) = recvfrom(BUFFSIZE)
-			except Exception:
-				print('Did not recieve response.')
-				self.sock.close()
-				exit(0)
-			try:
-				self.bytes_remaining = int(packet.decode(), 10)
-			except ValueError:
-				print('Length message not recieved.')
-		while self.bytes_remaining > 0:
-			try:
-				(packet, addr) = sock.recvfrom(BUFFSIZE)
-			except Exception:
-				print('Did not recieve response.')
-				self.sock.close()
-				exit(0)
-			self.sock.sendto('ACK'.decode(), addr)
-			if packet.decode() != self.last:
-				self.last = packet.decode()
-				self.msg.append(last)
-				self.bytes_remaining -= BUFFSIZE
-	def print_to_file(self):
-		from_server = ''.join(i for i in self.msg)
-		fname = 'client-' + time.strftime('%Y%m%d-%H%M%S') + '.txt'
+			continue
+		except ConnectionError:
+			print('Failed to send command. Terminating.')
+			sock.close()
+			exit(0)
+
+	# vars for receiving command
+	bytes_remaining = 0
+	msg = []
+	last = ''
+	# wait for response from server
+	while bytes_remaining == 0:
+		try:
+			(packet, addr) = sock.recvfrom(BUFFSIZE)
+		except Exception as e:
+			print(e)
+			print('Did not receive response.')
+			sock.close()
+			exit(0)
+		try:
+			bytes_remaining = int(packet.decode(), 10)
+		except ValueError:
+			print('Length message not received.')
+	while bytes_remaining > 0:
+		try:
+			(packet, addr) = sock.recvfrom(BUFFSIZE)
+		except Exception:
+			print('Did not receive response.')
+			sock.close()
+			exit(0)
+		sock.sendto('ACK'.encode(), addr)
+		if packet.decode() != last:
+			last = packet.decode()
+			msg.append(last)
+			bytes_remaining -= BUFFSIZE
+
+	# print output to file
+	from_server = ''.join(i for i in msg)
+	fname = 'client-' + time.strftime('%Y%m%d-%H%M%S') + '.txt'
+	try:
+		with open(fname, 'a') as f:
+			f.write(from_server)
+	except Exception:
 		with open(fname, 'w+') as f:
 			f.write(from_server)
-		print('File %s saved.' % fname)
-	def run(self, addr):
-		print('sending...')
-		self.send_to_server(addr)
-		print('waiting for response...')
-		self.get_server_response()
-		print('outputting response to file...')
-		self.print_to_file()
+	print('File %s saved.' % fname)
 
 addr = (HOST, PORT)
-client = Client()
-client.cmd = input('Enter command: ')
-client.run(addr)
+cmd = input('Enter command: ')
+length = str(len(cmd))
+
+threads = []
+for i in range(NUM_CLIENTS):
+	t = subprocess.threading.Thread(target=run,kwargs={'cmd':cmd,'length':length,'addr':addr})
+	t.start()
+	threads.append(t)
+
+for t in threads:
+	t.join()

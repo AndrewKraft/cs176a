@@ -77,8 +77,12 @@ class Client():
 		# run command, create file and write output
 		result = subprocess.run(cmd, shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		fname = 'server-' + time.strftime('%Y%m%d-%H%M%S') + '.txt'
-		with open(fname, 'w+') as f:
-			f.write(result.stdout)
+		try:
+			with open(fname, 'a') as f:
+				f.write(result.stdout)
+		except Exception:
+			with open(fname, 'w+') as f:
+				f.write(result.stdout)
 		
 		with open(fname, 'r') as f:
 			msg_to_client = f.read()

@@ -9,15 +9,14 @@ import time
 # https://docs.python.org/3/library/subprocess.html
 # https://docs.python.org/3/library/socket.html
 
-
+NUM_CLIENTS = 1
 HOST = input('Enter server name or IP address: ')
 try:
 	PORT = int(input('Enter port: '), 10)
 except ValueError as e:
 	print('Invalid port number.')
 	exit(0)
-NUM_CLIENTS = 1
-
+	
 if (PORT > 65353) | (PORT < 1024):
 	print('Invalid port number.')
 	exit(0)
@@ -62,7 +61,7 @@ for sock in clientsocks:
 			f.write(inFromServer)
 			print('File %s saved.' % fname)
 	except socket.error as e:
-		print('Did not recieve response.')
+		print('Did not receive response.')
 		del cmd[sock]
 		clientsocks.remove(sock)
 		sock.close()

@@ -55,7 +55,7 @@ while inputs:
 			try:
 				data = sock.recv(8)
 				if data:
-					print('recieved %s bytes from %s' % (data.decode(), sock.getpeername()))
+					print('received %s bytes from %s' % (data.decode(), sock.getpeername()))
 					cmd[sock] = sock.recv(int(data.decode(), 16)).decode()
 					if sock not in outputs:
 						outputs.append(sock)
