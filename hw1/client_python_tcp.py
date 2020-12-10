@@ -16,7 +16,7 @@ except ValueError as e:
 	print('Invalid port number.')
 	exit(0)
 	
-if (PORT > 65353) | (PORT < 1024):
+if (PORT > 65535) | (PORT < 1024):
 	print('Invalid port number.')
 	exit(0)
 addr = (HOST, PORT)
