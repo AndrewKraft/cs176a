@@ -53,7 +53,7 @@ if len(sys.argv) > 1:
 	except ValueError as e:
 		print('Invalid port number.')
 		exit(0)
-	if (PORT < 1024) | (PORT > 65353):
+	if (PORT < 1024) | (PORT > 65535):
 		print('Invalid port number.')
 		exit(0)
 HOST = ''
